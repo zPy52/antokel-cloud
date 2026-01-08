@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional, Literal, Union
+from typing import Optional, Literal, List, Union, Pattern
+
+import re
 
 import boto3
 
@@ -53,9 +55,9 @@ class EC2:
     machine: Optional[str] = None,
     mode: Literal['spot', 'on-demand'] = 'on-demand',
     key_pair: Optional[str] = None,
-    security_groups: Optional[list[str]] = None,
+    security_groups: Optional[List[str]] = None,
     ami: Optional[str] = None,
-    storage: Optional[list[Volume]] = None,
+    storage: Optional[List[Volume]] = None,
     user_data: Optional[Union[str, BaseUserData]] = None,
   ) -> Instance:
     """
@@ -112,6 +114,48 @@ class EC2:
       Volume configuration object
     """
     return Volume(id=id, gib=gib, mode=mode)
+
+  def find_by_name(self, regex: Union[str, Pattern[str]]) -> List[Instance]:
+    """
+    Find EC2 instances by their Name tag, using a Python regular expression.
+
+    Example:
+      ec2.find_by_name(regex='safegraph-.+')
+
+    Args:
+      regex: A regex pattern (string or compiled pattern) matched against the
+        instance Name tag value.
+
+    Returns:
+      List of Instance wrappers (with id and name populated).
+    """
+    pattern = re.compile(regex) if isinstance(regex, str) else regex
+
+    matches: List[Instance] = []
+    next_token: Optional[str] = None
+
+    while True:
+      kwargs = {}
+      if next_token:
+        kwargs["NextToken"] = next_token
+
+      resp = self._client.describe_instances(**kwargs)
+      for reservation in resp.get("Reservations", []):
+        for inst in reservation.get("Instances", []):
+          tags = inst.get("Tags", []) or []
+          name_tag = next((t for t in tags if t.get("Key") == "Name"), None)
+          name = name_tag.get("Value") if name_tag else None
+          if not name:
+            continue
+
+          if pattern.search(name):
+            matches.append(self.Instance(id=inst.get("InstanceId"), name=name))
+
+      next_token = resp.get("NextToken")
+      if not next_token:
+        break
+
+    return matches
 
 
 class _UserDataFactory:

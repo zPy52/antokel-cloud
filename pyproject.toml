@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "antokel-cloud"
-version = "0.0.2"
+version = "0.0.3"
 description = "Cloud SDK for Antokel engineers"
 readme = "README.md"
 authors = [

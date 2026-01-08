@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Literal
+from typing import TYPE_CHECKING, Optional, Union, List, Literal
 
 if TYPE_CHECKING:
   from . import EC2
@@ -36,9 +36,9 @@ class Instance:
     machine: Optional[str] = None,
     mode: Literal['spot', 'on-demand'] = 'on-demand',
     key_pair: Optional[str] = None,
-    security_groups: Optional[list[str]] = None,
+    security_groups: Optional[List[str]] = None,
     ami: Optional[str] = None,
-    storage: Optional[list[Volume]] = None,
+    storage: Optional[List[Volume]] = None,
     user_data: Optional[Union[str, BaseUserData]] = None,
   ):
     self._ec2 = ec2

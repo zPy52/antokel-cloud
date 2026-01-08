@@ -1,4 +1,2 @@
 boto3
 python-dotenv
-pytest
-moto[s3,ec2]

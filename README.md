@@ -44,6 +44,9 @@ aws = AntokelAws()
 
 ec2 = aws.EC2()
 
+# Find instances by Name tag (regex)
+instances = ec2.find_by_name(regex=r"safegraph-.+")
+
 bootup_script = '''
 echo "hello world"
 '''.strip()
