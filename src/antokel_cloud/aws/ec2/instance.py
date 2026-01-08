@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Literal
+from typing import TYPE_CHECKING, Optional, Union, Literal
 
 if TYPE_CHECKING:
   from . import EC2
   from .volume import Volume
+  from .user_data import BaseUserData
 
 
 class Instance:
@@ -38,7 +39,7 @@ class Instance:
     security_groups: Optional[list[str]] = None,
     ami: Optional[str] = None,
     storage: Optional[list[Volume]] = None,
-    user_data: Optional[str] = None,
+    user_data: Optional[Union[str, BaseUserData]] = None,
   ):
     self._ec2 = ec2
     self.id = id
@@ -91,7 +92,7 @@ class Instance:
       }]
     
     if self.user_data:
-      params['UserData'] = self.user_data
+      params['UserData'] = str(self.user_data)
     
     # Handle storage/volumes
     if self.storage:
@@ -151,4 +152,3 @@ class Instance:
       raise ValueError("Instance ID is not set. Call create() first or provide an ID.")
     
     self._ec2._client.terminate_instances(InstanceIds=[self.id])
-

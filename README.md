@@ -1,283 +1,85 @@
 # Antokel Cloud SDK
 
-**Antokel Cloud SDK** is a simplified Python SDK for AWS services, designed specifically for Antokel engineers. It provides clean, easy-to-use interfaces for common cloud operations while maintaining full compatibility with boto3 under the hood.
-
-## Features
-
-- **Simplified S3 operations**: Upload, download, move, and remove files with automatic prefix handling
-- **Text file operations**: Read, write, and stream text files from S3
-- **EC2 instance management**: Launch, start, stop, and terminate EC2 instances
-- **Automatic credential management**: Uses AWS environment variables by default
-- **Type-safe**: Full type hints and modern Python support
-
-Project status: **alpha** (API may change).
-
-## Installation
-
-From PyPI:
-
-```bash
-pip install antokel-cloud
-```
-
-From source (this repo):
-
-```bash
-pip install -e .
-```
-
-**Requirements**: Python 3.8+, boto3
-
-## Quick Start
+## Example usage for S3
 
 ```python
 from antokel_cloud.aws import AntokelAws
 
-# Initialize with automatic credential detection
-aws = AntokelAws()
+aws = AntokelAws() # ... optional parameters for the region, access key and secret key. They're obtained from the env variables by default
+# cloud = AntokelAws(region=..., access_key=..., secret_key=...)
 
-# S3 operations
-s3 = aws.S3('my-bucket')
-s3.upload('local/file.pdf', 'remote/file.pdf')
-s3.download('remote/file.pdf', 'local/file.pdf')
+s3 = aws.S3(bucket='bucket-name') # it can be positional too.
+# s3 = aws.S3('bucket-name') 
+# s3 = aws.S3('bucket-name', prefix='folder1/route/2') ... we can add an optional "prefix" that essentially establishes a folder/subfolder.
+# s3 = aws.S3('bucket-name', prefix='folder1/route/2/')
 
-# EC2 operations
-ec2 = aws.EC2()
-instance = ec2.Instance(machine='t4g.micro', key_pair='my-keypair')
-instance.create()
+s3.upload('path/to/local/file.pdf', 'path/without-prefix/on/s3.pdf')
+# s3.upload(local='path/to/local/file.pdf', cloud='path/without-prefix/on/s3.pdf')
+s3.remove('path/without-prefix/on/s3.pdf')
+# s3.remove(cloud='path/without-prefix/on/s3.pdf')
+s3.move('original/s3/path.pdf', 'new/s3/path.pdf') # this removes the original file and moves it to the new path.
+# s3.move(local='original/s3/path.pdf', cloud='new/s3/path.pdf')
+
+s3.download('path/without-prefix/on/s3.pdf', 'path/to/local/file.pdf')
+# s3.download(cloud='path/without-prefix/on/s3.pdf', local='path/to/local/file.pdf')
+
+s3.as_text.read('path/without-prefix/on/s3.txt') # this returns a string which reads the text from S3.
+# s3.as_text.read(cloud='path/without-prefix/on/s3.txt')
+content = 'example'
+s3.as_text.write(content, 'path/without-prefix/on/s3.txt') # this returns a string which reads the text from S3.
+# s3.as_text.write(content=content, cloud='path/without-prefix/on/s3.txt')
+
+lines = s3.as_text.stream_lines('path/without-prefix/on/s3.csv') # this one streams, reading little by little, a file like a csv or a txt or similar as lines, which can be obtained from iterating it.
+# lines = s3.as_text.stream_lines(cloud='path/without-prefix/on/s3.csv')
+for line in lines:
+  print(line) # for example, a .CSV line
 ```
 
-## S3 Usage
 
-### Basic File Operations
-
+## Example usage for EC2
 ```python
 from antokel_cloud.aws import AntokelAws
 
 aws = AntokelAws()
-s3 = aws.S3('my-bucket')
 
-# Upload a file
-s3.upload('path/to/local/file.pdf', 'remote/path/file.pdf')
-
-# Download a file
-s3.download('remote/path/file.pdf', 'path/to/local/file.pdf')
-
-# Move a file within S3
-s3.move('old/path/file.pdf', 'new/path/file.pdf')
-
-# Delete a file
-s3.remove('remote/path/file.pdf')
-```
-
-### Working with Prefixes
-
-You can set a prefix to organize files in a specific "folder":
-
-```python
-# All operations will be scoped to 'data/reports/'
-s3 = aws.S3('my-bucket', prefix='data/reports/')
-
-s3.upload('local/report.pdf', 'monthly.pdf')  # -> data/reports/monthly.pdf
-s3.download('monthly.pdf', 'local/report.pdf')  # <- data/reports/monthly.pdf
-```
-
-### Text File Operations
-
-```python
-from antokel_cloud.aws import AntokelAws
-
-aws = AntokelAws()
-s3 = aws.S3('my-bucket')
-
-# Read text content
-content = s3.as_text.read('config/settings.json')
-print(content)
-
-# Write text content
-s3.as_text.write('{"setting": "value"}', 'config/settings.json')
-
-# Stream large files line by line (memory efficient)
-for line in s3.as_text.stream_lines('data/large-file.csv'):
-    print(line)
-```
-
-## EC2 Usage
-
-### Creating and Managing Instances
-
-```python
-from antokel_cloud.aws import AntokelAws
-
-aws = AntokelAws()
 ec2 = aws.EC2()
 
-# Create a new instance
-instance = ec2.Instance(
-    name='my-server',
-    machine='t4g.micro',
-    mode='on-demand',  # or 'spot'
-    key_pair='my-keypair',
-    security_groups=['sg-01234567'],
-    storage=[
-        ec2.Volume(gib=16, mode='gp3'),  # 16GB GP3 volume
-    ],
-    user_data='''#!/bin/bash
-echo "Instance started"
-'''
+bootup_script = '''
+echo "hello world"
+'''.strip()
+
+script = ec2.user_data.ContainerFleet(
+  ecr='669547439729.dkr.ecr.us-east-1.amazonaws.com/penya-warmer',
+  os='amazon_linux', # 'amazon_linux' by default. Can also be debian, ubuntu, macos, windows, red_hat, suse_linux.
+  env={ # optional; empty by default. 
+    "OPENAI_API_KEY": "...",
+    "DEBUG": "true",
+    ...
+  },
+  cmd='python main.py --concurrency 5'
 )
 
-# Launch the instance
-instance.create()
-print(f"Instance created: {instance.id}")
+instance = ec2.Instance(
+  id='...', # optional; if not given, it'll create one using `instance.create()` and update the id. Otherwise, the programmer means the instance already exists and wants to communicate with it. In that case, the programmer should only have to give the instance id and not need to specify any of the other fields.
+  name='my-machine', # optional
+  machine='t4g.micro', # required if id not given; otherwise optional
+  mode='spot', # optional, can be 'spot' or 'on-demand'. It's 'on-demand' by default 
+  key_pair='keypair-name', # required if id not given; otherwise optional
+  security_groups=['sg-01234', 'sg-98123'], # optional
+  ami='ami_13290193013' # optional
+  storage=[
+    ec2.Volume(
+      id='...', # optional; if given, it's referring to an existing volume snapshot that the ec2 instance should attach to. In that case, all other kwargs become optional. Otherwise, if not provided, it'll create a volume that will be destroyed on instance's termination
+      gib=8, 
+      mode='gp3', # optional, gp3 by default. It can be gp2 and standard as well.
+    ),
+    ...
+  ], # optional; it'll create one volume that'll be deleted on instance termination with 8 GB and gp3 mode.
+  user_data=bootup_script # optional; it can also be an `ec2.BaseUserData` object, which would be the `script` variable.
+)
 
-# Control the instance
+instance.create()
 instance.start()
 instance.stop()
 instance.terminate()
 ```
-
-### Working with Existing Instances
-
-```python
-# Reference an existing instance by ID
-instance = ec2.Instance(id='i-0123456789abcdef0')
-instance.start()
-instance.stop()
-```
-
-### Volume Configuration
-
-```python
-# Different volume types
-volumes = [
-    ec2.Volume(gib=8, mode='gp3'),      # General purpose SSD (default)
-    ec2.Volume(gib=100, mode='gp2'),    # Previous generation GP SSD
-    ec2.Volume(gib=500, mode='standard'), # Magnetic
-]
-
-# Use existing volume snapshot
-volume_from_snapshot = ec2.Volume(id='snap-0123456789abcdef0')
-```
-
-## Configuration
-
-### AWS Credentials
-
-The SDK automatically reads AWS credentials from environment variables:
-
-```bash
-export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
-```
-
-You can also pass credentials explicitly:
-
-```python
-aws = AntokelAws(
-    region='us-west-2',
-    access_key='your-access-key',
-    secret_key='your-secret-key'
-)
-```
-
-## API Reference
-
-### AntokelAws
-
-Main entry point for all AWS services.
-
-```python
-class AntokelAws:
-    def __init__(
-        self,
-        region: Optional[str] = None,
-        access_key: Optional[str] = None,
-        secret_key: Optional[str] = None,
-    ): ...
-
-    def S3(self, bucket: str, prefix: Optional[str] = None) -> S3: ...
-
-    def EC2(self) -> EC2: ...
-```
-
-### S3
-
-Simplified S3 client with prefix support.
-
-```python
-class S3:
-    def upload(self, local: str, cloud: str) -> None: ...
-    def download(self, cloud: str, local: str) -> None: ...
-    def remove(self, cloud: str) -> None: ...
-    def move(self, original: str, new: str) -> None: ...
-
-    @property
-    def as_text(self) -> S3Text: ...
-```
-
-### S3Text
-
-Text-based operations for S3 files.
-
-```python
-class S3Text:
-    def read(self, cloud: str) -> str: ...
-    def write(self, content: str, cloud: str) -> None: ...
-    def stream_lines(self, cloud: str) -> Iterator[str]: ...
-```
-
-### EC2
-
-EC2 client for instance management.
-
-```python
-class EC2:
-    def Instance(
-        self,
-        id: Optional[str] = None,
-        name: Optional[str] = None,
-        machine: Optional[str] = None,
-        mode: Literal['spot', 'on-demand'] = 'on-demand',
-        key_pair: Optional[str] = None,
-        security_groups: Optional[list[str]] = None,
-        ami: Optional[str] = None,
-        storage: Optional[list[Volume]] = None,
-        user_data: Optional[str] = None,
-    ) -> Instance: ...
-
-    def Volume(
-        self,
-        id: Optional[str] = None,
-        gib: int = 8,
-        mode: Literal['gp3', 'gp2', 'standard'] = 'gp3',
-    ) -> Volume: ...
-```
-
-### Instance
-
-EC2 instance management.
-
-```python
-class Instance:
-    @property
-    def id(self) -> Optional[str]: ...
-
-    def create(self) -> None: ...
-    def start(self) -> None: ...
-    def stop(self) -> None: ...
-    def terminate(self) -> None: ...
-```
-
-## Notes
-
-- **Prefix handling**: S3 prefixes are automatically normalized (leading/trailing slashes)
-- **Credential precedence**: Explicit parameters override environment variables
-- **Instance lifecycle**: New instances get a default 8GB GP3 root volume if none specified
-- **Spot instances**: Use `mode='spot'` for cost savings, but instances may be terminated
-- **Volume attachment**: Volumes are automatically attached during instance creation
-
-## License
-
-Apache-2.0. See `LICENSE`.

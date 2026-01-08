@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
 
 import boto3
 
 from .volume import Volume
 from .instance import Instance
+from .user_data.base import BaseUserData
+from .user_data.container_fleet import ContainerFleet
 
 
 class EC2:
@@ -29,6 +31,10 @@ class EC2:
     access_key: Optional[str] = None,
     secret_key: Optional[str] = None,
   ):
+    self.region = region
+    self.access_key = access_key
+    self.secret_key = secret_key
+
     session_kwargs = {}
     if region:
       session_kwargs['region_name'] = region
@@ -38,6 +44,7 @@ class EC2:
       session_kwargs['aws_secret_access_key'] = secret_key
     
     self._client = boto3.client('ec2', **session_kwargs)
+    self.user_data = _UserDataFactory(self)
   
   def Instance(
     self,
@@ -49,7 +56,7 @@ class EC2:
     security_groups: Optional[list[str]] = None,
     ami: Optional[str] = None,
     storage: Optional[list[Volume]] = None,
-    user_data: Optional[str] = None,
+    user_data: Optional[Union[str, BaseUserData]] = None,
   ) -> Instance:
     """
     Create an Instance configuration.
@@ -106,3 +113,13 @@ class EC2:
     """
     return Volume(id=id, gib=gib, mode=mode)
 
+
+class _UserDataFactory:
+  def __init__(self, ec2: EC2):
+    self._ec2 = ec2
+
+  def ContainerFleet(self, *args, **kwargs) -> ContainerFleet:
+    return ContainerFleet(*args, **kwargs, ec2=self._ec2)
+
+
+EC2.BaseUserData = BaseUserData  # type: ignore[attr-defined]
