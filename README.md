@@ -52,7 +52,7 @@ echo "hello world"
 '''.strip()
 
 script = ec2.user_data.ContainerFleet(
-  ecr='669547439729.dkr.ecr.us-east-1.amazonaws.com/penya-warmer',
+  ecr='112233445566.dkr.ecr.us-east-1.amazonaws.com/repo-tag',
   os='amazon_linux', # 'amazon_linux' by default. Can also be debian, ubuntu, macos, windows, red_hat, suse_linux.
   env={ # optional; empty by default. 
     "OPENAI_API_KEY": "...",
