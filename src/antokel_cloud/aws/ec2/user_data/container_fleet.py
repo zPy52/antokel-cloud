@@ -105,10 +105,16 @@ class ContainerFleet(BaseUserData):
       f" | docker login --username AWS --password-stdin {self._shell_quote(registry)}"
     )
 
-    # When cmd is empty we just run the image default CMD.
-    cmd_part = f" {self.cmd}" if self.cmd else ""
+    # When cmd is empty we just run the image default CMD/ENTRYPOINT.
+    # When cmd is provided, we clear the entrypoint to fully override the command.
+    if self.cmd:
+      entrypoint_flag = "--entrypoint ''"
+      cmd_part = f" {self.cmd}"
+    else:
+      entrypoint_flag = ""
+      cmd_part = ""
     docker_run = (
-      f"docker run -d --restart=always {env_flags} {self._shell_quote(image)}{cmd_part}"
+      f"docker run -d --restart=always {entrypoint_flag} {env_flags} {self._shell_quote(image)}{cmd_part}"
     ).strip()
 
     script = f"""\
