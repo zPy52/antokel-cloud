@@ -114,7 +114,7 @@ class ContainerFleet(BaseUserData):
       entrypoint_flag = ""
       cmd_part = ""
     docker_run = (
-      f"docker run -d --restart=always {entrypoint_flag} {env_flags} {self._shell_quote(image)}{cmd_part}"
+      f"docker run -d {entrypoint_flag} {env_flags} {self._shell_quote(image)}{cmd_part}"
     ).strip()
 
     script = f"""\
