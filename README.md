@@ -29,10 +29,14 @@ content = 'example'
 s3.as_text.write(content, 'path/without-prefix/on/s3.txt') # this returns a string which reads the text from S3.
 # s3.as_text.write(content=content, cloud='path/without-prefix/on/s3.txt')
 
-lines = s3.as_text.stream_lines('path/without-prefix/on/s3.csv') # this one streams, reading little by little, a file like a csv or a txt or similar as lines, which can be obtained from iterating it.
+lines = s3.as_text.stream_lines('path/without-prefix/on/s3.csv') # this one streams, reading little by little, a file like a csv or a txt or similar as lines, which can be obtained from iterating it. It's billed by S3 as only ONE read.
 # lines = s3.as_text.stream_lines(cloud='path/without-prefix/on/s3.csv')
 for line in lines:
   print(line) # for example, a .CSV line
+
+rows = s3.as_text.stream_csv('path/without-prefix/on/s3.csv')
+for row in rows:
+  print(row) # a dict obj, just like csv.DictReader would return
 ```
 
 
