@@ -3,7 +3,7 @@
 ## Example usage for S3
 
 ```python
-from antokel_cloud.aws import AntokelAws
+from antokel_cloud import AntokelAws
 
 aws = AntokelAws() # ... optional parameters for the region, access key and secret key. They're obtained from the env variables by default
 # cloud = AntokelAws(region=..., access_key=..., secret_key=...)
@@ -42,7 +42,7 @@ for row in rows:
 
 ## Example usage for EC2
 ```python
-from antokel_cloud.aws import AntokelAws
+from antokel_cloud import AntokelAws
 
 aws = AntokelAws()
 
